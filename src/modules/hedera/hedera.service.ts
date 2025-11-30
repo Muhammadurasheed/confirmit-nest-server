@@ -165,23 +165,37 @@ export class HederaService {
       const businessData = businessDoc.data();
       
       // Full metadata for Firestore (not limited by Hedera constraints)
+      // CRITICAL: Include ALL business information for rich NFT display
       const fullMetadata = {
         business_id: businessId,
         business_name: businessName,
-        business_logo: businessData?.logo || null,
+        business_logo: businessData?.logo || businessData?.profile?.logo || null,
+        business_website: businessData?.profile?.contact?.website || null,
+        business_phone: businessData?.profile?.contact?.phone || null,
+        business_email: businessData?.profile?.contact?.email || null,
+        business_location: businessData?.profile?.location ? {
+          city: businessData.profile.location.city,
+          state: businessData.profile.location.state,
+          area: businessData.profile.location.area,
+        } : null,
         category: businessData?.category || 'Unspecified',
         trust_score: trustScore,
         verification_tier: verificationTier,
         verified_at: new Date().toISOString(),
         network: 'ConfirmIT Trust Network',
         type: 'Trust_ID_Certificate',
-        description: `${businessName} is a verified ${businessData?.category || 'business'} on ConfirmIT with a trust score of ${trustScore}/100.`,
+        description: `${businessName} is a verified ${businessData?.category || 'business'} on ConfirmIT with a trust score of ${trustScore}/100. ${businessData?.profile?.tagline || ''}`.trim(),
+        tagline: businessData?.profile?.tagline || null,
+        products: businessData?.profile?.products || [],
+        services: businessData?.profile?.services || [],
         attributes: {
           trust_score: trustScore.toString(),
           tier: `Tier ${verificationTier}`,
           category: businessData?.category || 'Unspecified',
           verified_date: new Date().toISOString().split('T')[0],
           network: 'ConfirmIT',
+          rating: businessData?.rating?.toString() || '0',
+          review_count: businessData?.review_count?.toString() || '0',
         },
       };
 
