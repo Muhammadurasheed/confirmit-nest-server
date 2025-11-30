@@ -69,4 +69,10 @@ export class AccountsController {
       dto.bankCode,
     );
   }
+
+  @Get('fraud/stats')
+  @ApiOperation({ summary: 'Get fraud prevention statistics for homepage' })
+  async getFraudStats() {
+    return this.accountsService.getFraudStats();
+  }
 }

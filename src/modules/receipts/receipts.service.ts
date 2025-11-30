@@ -155,6 +155,13 @@ export class ReceiptsService {
       let analysisResult;
 
       try {
+        // Verify AI service URL is configured
+        if (!aiServiceUrl) {
+          throw new Error(
+            'AI service URL not configured. Please set AI_SERVICE_URL environment variable.',
+          );
+        }
+
         this.logger.log('⏳ Sending request to AI service...');
         aiResponse = await axios.post(
           `${aiServiceUrl}/api/analyze-receipt`,
@@ -193,7 +200,13 @@ export class ReceiptsService {
           this.logger.log(`  - heatmap: ${Array.isArray(analysisResult.forensic_details.heatmap) ? analysisResult.forensic_details.heatmap.length + ' rows' : typeof analysisResult.forensic_details.heatmap}`);
         }
       } catch (aiError) {
-        this.logger.error(`AI service error: ${aiError.message}`, aiError.stack);
+        this.logger.error(`❌ AI service error: ${aiError.message}`, aiError.stack);
+        this.logger.error(`❌ AI service URL: ${aiServiceUrl}`);
+        this.logger.error(`❌ Error code: ${aiError.code}`);
+        if (aiError.response) {
+          this.logger.error(`❌ Response status: ${aiError.response.status}`);
+          this.logger.error(`❌ Response data: ${JSON.stringify(aiError.response.data)}`);
+        }
 
         // Check if it's a timeout
         if (aiError.code === 'ECONNABORTED' || aiError.message.includes('timeout')) {
@@ -202,18 +215,26 @@ export class ReceiptsService {
           );
         }
 
-        // Check if service is down
+        // Check if service is down or unreachable
         if (aiError.code === 'ECONNREFUSED' || aiError.code === 'ENOTFOUND') {
           throw new Error(
-            'AI service is currently unavailable. Our team has been notified. Please try again in a few minutes.',
+            `AI service is not reachable at ${aiServiceUrl}. Please verify the service is deployed and AI_SERVICE_URL is correct.`,
           );
         }
 
-        // Generic AI error
+        // Check for specific AI service errors
+        if (aiError.response?.status === 503) {
+          throw new Error(
+            'AI service is not properly configured. Check that GEMINI_API_KEY is set in the AI service environment.',
+          );
+        }
+
+        // Generic AI error with more detail
+        const errorDetail = aiError.response?.data?.detail || 
+                           aiError.response?.data?.message ||
+                           aiError.message;
         throw new Error(
-          aiError.response?.data?.detail || 
-          aiError.response?.data?.message ||
-          'AI analysis failed. Please try again with a clearer image.',
+          `AI analysis failed: ${errorDetail}. Please try again or contact support if the issue persists.`,
         );
       }
 
